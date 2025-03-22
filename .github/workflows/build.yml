@@ -10,31 +10,37 @@ on:
 jobs:
   build:
     runs-on: ubuntu-latest
-    
+
     steps:
       - name: Check out repository
         uses: actions/checkout@v3
 
       - name: Make gradlew executable (if needed)
-        run: |
-          ls -la
-          chmod +x gradlew
-          ls -la
+        run: chmod +x gradlew
 
-      - name: Set up Java 11
+      # 1) Set up the Android SDK + CMake
+      - name: Set up Android
+        uses: android-actions/setup-android@v2
+        with:
+          api-level: 30
+          build-tools: "30.0.3"
+          # The critical part: installing the needed CMake version
+          cmake-version: "3.18.1"
+          # If your project also needs an NDK, specify it:
+          ndk-version: "21.4.7075529"
+
+      # 2) Set up Java 11
+      - name: Set up Java
         uses: actions/setup-java@v3
         with:
           distribution: temurin
           java-version: 11
-          cache: gradle
 
+      # 3) Build your project
       - name: Build with Gradle
         run: |
-          # Replace text in module.gradle and game.h using the input from workflow_dispatch
           sed -i "s/moduleDescription = \"/moduleDescription = \"(${{ github.event.inputs.package_name }}) /g" module.gradle
           sed -i "s/com.game.packagename/${{ github.event.inputs.package_name }}/g" module/src/main/cpp/game.h
-
-          # Now run the Gradle build
           ./gradlew :module:assembleRelease
 
       - name: Upload artifact
